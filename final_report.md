@@ -9,26 +9,26 @@ For this step, we are running the lightGBM model which consists several shallow 
 
 * Module generation:\
 a.	Firstly, we generate some target-TF pairs(which they called module in the Pyscenic paper), which solely based on the top N targets for each factor, with a default of 50 targets
-```https://github.com/aertslab/pySCENIC/blob/c120979378f2e6a1415b1d9e973b19a718531484/src/pyscenic/utils.py#L219\```
-b.	Secondly, we calculate the pearson correlation for each row(gene). For the below codes, this is a snippet about how they implement the module "filtering". So they use the previous results which is feature importance csv file, then they extract all the genes including target and TFs. Then they compute the correlation between each gene(column). The result is a correlation matrix which looks like [[1,0.xx,0.xx,...],[0.xx,1,0.xx,...],[...],[...]]. Then they try to delete those negative correlation between target and TF pairs, which they think is meaningless(negative correlation probably means this TF doesn't contribute to the cell's functioning?, see the rhos step for the deletion). At the end of this step, we get the target-TF pairs that could have positive correlation solely based on the expression matrix' correlation, which their paper mentioned also. \
+```https://github.com/aertslab/pySCENIC/blob/c120979378f2e6a1415b1d9e973b19a718531484/src/pyscenic/utils.py#L219```
+b.	Secondly, we calculate the pearson correlation for each row(gene). For the below codes, this is a snippet about how they implement the module "filtering". So they use the previous results which is feature importance csv file, then they extract all the genes including target and TFs. Then they compute the correlation between each gene(column). The result is a correlation matrix which looks like [[1,0.xx,0.xx,...],[0.xx,1,0.xx,...],[...],[...]]. Then they try to delete those negative correlation between target and TF pairs, which they think is meaningless(negative correlation probably means this TF doesn't contribute to the cell's functioning?, see the rhos step for the deletion). At the end of this step, we get the target-TF pairs that could have positive correlation solely based on the expression matrix' correlation, which their paper mentioned also. 
 
-```Genes = list(set(adjacencies[COLUMN_NAME_TF]).union(set(adjacencies[COLUMN_NAME_TARGET]))) \
-ex_mtx = ex_mtx[ex_mtx.columns[ex_mtx.columns.isin(genes)]] \
-corr_mtx = pd.DataFrame(index=ex_mtx.columns, columns=ex_mtx.columns, data=np.corrcoef(ex_mtx.values.T)) \
-rhos = np.array([corr_mtx[s2][s1] for s1, s2 in zip(adjacencies.TF, adjacencies.target)]) \
-*Drop negative correlation \
+```Genes = list(set(adjacencies[COLUMN_NAME_TF]).union(set(adjacencies[COLUMN_NAME_TARGET]))) 
+ex_mtx = ex_mtx[ex_mtx.columns[ex_mtx.columns.isin(genes)]] 
+corr_mtx = pd.DataFrame(index=ex_mtx.columns, columns=ex_mtx.columns, data=np.corrcoef(ex_mtx.values.T)) 
+rhos = np.array([corr_mtx[s2][s1] for s1, s2 in zip(adjacencies.TF, adjacencies.target)]) 
+*Drop negative correlation 
 *set some threshold
 ```
 * Pruning(CisTarget):  
 a.	For this step, since the previous step is bascially based on the expression data, which might or might not a representation of the true relationship between TF and target pair. So in this step, they add additional step that I consider further extract the meaningful TF-target pairs. Given a pre-definied database of ranking for the gene(n_feature,n_genes,pre-defined), use the np.cumsum(row) for each gene to get the recovery curve. For the recovery curve, see the below code snippet and github link for further information. Basically, given a ranking dataframe, they calculated the occurance frequency for each module(tf-target pair) and finally calculate the cumulative sum for those frequencies.Then they use the ```np.sum``` to get the auc for each gene based on some rank-cut-off threshold. This remain the most challenging step for understanding the Pyscenic, I still have some confusions yet.
 ```https://github.com/aertslab/ctxcore/blob/e68a0b168b9511efb3140c5cf1dd2b07bbd811cc/src/ctxcore/recovery.py#L64```
 ```
-n_features = rankings.shape[0] \
-rccs = np.empty(shape=(n_features, rank_threshold))  # Pre-allocation. \
-for row_idx in range(n_features):\
+n_features = rankings.shape[0] 
+rccs = np.empty(shape=(n_features, rank_threshold))  # Pre-allocation. 
+for row_idx in range(n_features):
     curranking = rankings[row_idx, :]  
     rccs[row_idx, :] = np.cumsum( 
-        np.bincount(curranking, weights=weights)[:rank_threshold]) \
+        np.bincount(curranking, weights=weights)[:rank_threshold]) 
 return rccs
 ```
 
@@ -67,7 +67,7 @@ b.	Filter out some low-threshold cell
 c.	```https://github.com/aertslab/pySCENIC/blob/c120979378f2e6a1415b1d9e973b19a718531484/src/pyscenic/aucell.py```
 d.	
 
-* Clustering based on the regulon and get the cell  \
+* Clustering based on the regulon and get the cell  
 * For this step, the results from the previous step looks like some cell filled with aucs with different modules. Then we could do clustering for those cells, we could do UMAP(which is deterministic(result don't change when seed change), TSNE(non-deterministic, result do change when seed change), both of those are non-linear method, or we could do k-means, which is linear method, which might not capture the necessary important information for the results from LightGBM(Genius 3))
 
 
